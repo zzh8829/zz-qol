@@ -5,11 +5,10 @@ Build and (optionally) upload a Factorio modpack release.
 Features:
 - Reads name/version from <moddir>/info.json
 - Creates dist/<name>_<version>.zip with proper inner folder structure
-- Optional upload to Mod Portal via legacy v1 flow using username + API token
+- Optional upload to Mod Portal via v2 publish API using a single API key
 
 Environment for upload (--upload):
-- FACTORIO_USERNAME: your mods.factorio.com username
-- FACTORIO_TOKEN: API token from https://mods.factorio.com/api-key (used as password for login)
+- FACTORIO_TOKEN: API key with "ModPortal: Publish Mods" permission (from https://factorio.com/profile)
 
 macOS convenience
 - If the above env vars are not set, this script will attempt to read
@@ -121,8 +120,11 @@ def run_curl_json(url: str, payload: Dict[str, str], headers: Optional[Dict[str,
         raise SystemExit(f"Failed to parse JSON response from {url}: {e}\nRaw: {out[:200]}...")
 
 
-def run_curl_form(url: str, fields: Dict[str, str], files: Optional[Dict[str, Path]] = None) -> str:
+def run_curl_form(url: str, fields: Dict[str, str], files: Optional[Dict[str, Path]] = None, headers: Optional[Dict[str, str]] = None) -> str:
     cmd: List[str] = ["curl", "-sS", "-f", "-X", "POST"]
+    if headers:
+        for k, v in headers.items():
+            cmd += ["-H", f"{k}: {v}"]
     for k, v in fields.items():
         cmd += ["-F", f"{k}={v}"]
     if files:
@@ -146,84 +148,50 @@ def maybe_read_changelog(path: Optional[Path]) -> Optional[str]:
     return text or None
 
 
-def load_credentials() -> Optional[tuple[str, str]]:
-    """Return (username, token) either from env vars or known local files.
+def upload_v2(mod_name: str, zip_path: Path, description: Optional[str]) -> None:
+    """Publish via Factorio's v2 publish API using only FACTORIO_TOKEN.
 
-    Lookup order:
-    1) FACTORIO_USERNAME + FACTORIO_TOKEN environment
-    2) macOS: ~/Library/Application Support/factorio/player-data.json
-    3) Linux: ~/.factorio/player-data.json
-    4) Windows: %APPDATA%/Factorio/player-data.json
+    Flow:
+      1) POST to /api/v2/mods/init_publish with header Authorization: Bearer <token>
+         Form field: mod=<mod_name>
+         -> returns { upload_url }
+      2) POST to <upload_url> with multipart form: file=@zip [, description]
+         -> returns { success: true, url: "/mod/<name>" }
     """
-    username = os.environ.get("FACTORIO_USERNAME")
     token = os.environ.get("FACTORIO_TOKEN")
-    if username and token:
-        return username, token
+    if not token:
+        raise SystemExit("--upload requires FACTORIO_TOKEN (with ModPortal: Publish Mods permission).")
 
-    candidates = [
-        os.path.expanduser("~/Library/Application Support/factorio/player-data.json"),
-        os.path.expanduser("~/.factorio/player-data.json"),
-        os.path.join(os.environ.get("APPDATA", ""), "Factorio", "player-data.json"),
-    ]
-    for p in candidates:
-        if not p:
-            continue
-        path = Path(p)
-        if path.exists():
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-                u = data.get("service-username") or data.get("username")
-                t = data.get("service-token") or data.get("token")
-                if u and t:
-                    return str(u), str(t)
-            except Exception:
-                pass
-    return None
-
-
-def upload_v1(mod_name: str, zip_path: Path, changelog: Optional[str]) -> None:
-    creds = load_credentials()
-    if not creds:
-        raise SystemExit("--upload requires FACTORIO_USERNAME/FACTORIO_TOKEN or a readable player-data.json with service-username/token.")
-    username, token = creds
-
-    # 1) Login -> get session token
-    login_url = "https://mods.factorio.com/api/login"
-    login_resp = run_curl_json(login_url, {"username": username, "password": token})
-    session_token = login_resp.get("token")
-    if not session_token:
-        raise SystemExit("Login succeeded but no token returned.")
-
-    # 2) Initiate upload -> get S3 upload URL + fields
-    init_url = "https://mods.factorio.com/api/mods/releases/initiate"
-    init_resp = run_curl_form(init_url, {"mod": mod_name, "token": session_token})
+    init_url = "https://mods.factorio.com/api/v2/mods/init_publish"
+    headers = {"Authorization": f"Bearer {token}"}
+    init_resp = run_curl_form(init_url, {"mod": mod_name}, headers=headers)
     try:
         init_json = json.loads(init_resp)
     except Exception as e:
-        raise SystemExit(f"Failed to parse initiate response: {e}\nRaw: {init_resp[:200]}...")
-
+        raise SystemExit(f"Failed to parse init_publish response: {e}\nRaw: {init_resp[:200]}...")
+    if "error" in init_json:
+        raise SystemExit(f"init_publish error: {init_json.get('error')}: {init_json.get('message')}")
     upload_url = init_json.get("upload_url")
-    fields = init_json.get("fields") or {}
-    if not upload_url or not fields:
-        raise SystemExit("Initiate did not return upload_url/fields.")
+    if not upload_url:
+        raise SystemExit("init_publish did not return upload_url")
 
-    # 3) Upload to S3
-    # fields contains 'key' which we need for finish step
-    run_curl_form(upload_url, fields, {"file": zip_path})
-
-    # 4) Finish release
-    finish_url = "https://mods.factorio.com/api/mods/releases/finish"
-    finish_fields = {"mod": mod_name, "token": session_token, "file": fields.get("key", "")}
-    if changelog:
-        finish_fields["changelog"] = changelog
-    run_curl_form(finish_url, finish_fields)
+    fields: Dict[str, str] = {}
+    if description:
+        fields["description"] = description
+    upload_resp = run_curl_form(upload_url, fields, files={"file": zip_path})
+    try:
+        uploaded = json.loads(upload_resp)
+    except Exception as e:
+        raise SystemExit(f"Failed to parse finish_upload response: {e}\nRaw: {upload_resp[:200]}...")
+    if not uploaded.get("success"):
+        raise SystemExit(f"finish_upload failed: {uploaded}")
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Build and optionally upload a Factorio mod release")
     ap.add_argument("--path", default=".", help="Path to the mod directory containing info.json")
     ap.add_argument("--out-dir", default="dist", help="Output directory for built zips")
-    ap.add_argument("--upload", action="store_true", help="Upload to Factorio Mod Portal (v1 flow)")
+    ap.add_argument("--upload", action="store_true", help="Upload to Factorio Mod Portal (v2 publish API)")
     ap.add_argument("--changelog", default=None, help="Path to changelog file to include in release")
     args = ap.parse_args(argv)
 
@@ -242,10 +210,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.upload:
         changelog_text = maybe_read_changelog(Path(args.changelog)) if args.changelog else None
         print(f"Uploading {name} {version} to Mod Portal...")
-        upload_v1(name, zip_path, changelog_text)
+        upload_v2(name, zip_path, changelog_text)
         print("Upload completed.")
     else:
-        print("Dry run (no upload). To upload, pass --upload and set FACTORIO_USERNAME + FACTORIO_TOKEN, or let the script read player-data.json.")
+        print("Dry run (no upload). To upload, pass --upload and set FACTORIO_TOKEN.")
 
     return 0
 
