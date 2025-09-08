@@ -17,7 +17,7 @@ Examples
     scripts/pin_mod_versions.py --write --mode eq
 
   Only a specific pack file:
-    scripts/pin_mod_versions.py --path qol-editor/info.json --write
+    scripts/pin_mod_versions.py --path zz-qol-editor/info.json --write
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ import sys
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.request import urlopen
 
-MOD_PACK_NAMES = {"qol-lite", "qol-plus", "qol-max", "qol-editor"}
+MOD_PACK_NAMES = {"zz-qol-lite", "zz-qol-plus", "zz-qol-max", "zz-qol-editor"}
 DEP_RE = re.compile(r"^\s*([!?])?\s*([A-Za-z0-9_-]+)(?:\s*(>=|<=|==|=|~>)\s*([0-9][0-9.]*))?\s*$")
 
 
@@ -186,4 +186,3 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

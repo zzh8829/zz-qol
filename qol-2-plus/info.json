@@ -2,7 +2,7 @@
   "name": "zz-qol-plus",
   "version": "1.0.0",
   "title": "QoL Plus (Light Automation)",
-  "author": "zihao",
+  "author": "zzh8829",
   "description": "Automates click-heavy tasks a player can do manually. Includes Auto Deconstruct and Even Distribution.",
   "factorio_version": "2.0",
   "dependencies": [
@@ -15,3 +15,4 @@
     "manual-inventory-sort >= 2.3.0"
   ]
 }
+
