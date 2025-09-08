@@ -1,0 +1,23 @@
+{
+  "name": "zz-qol-lite",
+  "version": "1.0.0",
+  "title": "QoL Lite (Display Only)",
+  "author": "zihao",
+  "description": "Display-only quality-of-life pack: Infomatrion, Rate Calculator, Milestones.",
+  "factorio_version": "2.0",
+  "dependencies": [
+    "base >= 2.0.0",
+    "informatron",
+    "RateCalculator",
+    "Milestones",
+    "belt-visualizer",
+    "flib",
+    "better-victory-screen",
+    "show-max-underground-distance",
+    "BottleneckLite",
+    "StatsGui",
+    "factoryplanner",
+    "RecipeBook",
+    "FactorySearch"
+  ]
+}
