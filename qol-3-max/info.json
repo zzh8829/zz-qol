@@ -7,8 +7,8 @@
   "factorio_version": "2.0",
   "dependencies": [
     "zz-qol-plus >= 1.0.0",
-    "blueprint-shotgun",
-    "squeak-through-2",
-    "inventory-repair"
+    "blueprint-shotgun >= 0.2.11",
+    "squeak-through-2 >= 0.1.2",
+    "inventory-repair >= 20.0.3"
   ]
 }

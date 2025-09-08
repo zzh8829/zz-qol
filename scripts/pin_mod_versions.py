@@ -30,7 +30,6 @@ import sys
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.request import urlopen
 
-
 MOD_PACK_NAMES = {"qol-lite", "qol-plus", "qol-max", "qol-editor"}
 DEP_RE = re.compile(r"^\s*([!?])?\s*([A-Za-z0-9_-]+)(?:\s*(>=|<=|==|=|~>)\s*([0-9][0-9.]*))?\s*$")
 
