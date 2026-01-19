@@ -107,13 +107,19 @@ def iter_infojson_paths(root: str) -> Iterable[str]:
     if os.path.isfile(root):
         yield root
         return
-    for dirpath, _dirnames, filenames in os.walk(root):
-        for fn in filenames:
-            if fn == "info.json":
-                yield os.path.join(dirpath, fn)
+    # Only scan one level under root for info.json files.
+    for entry in os.listdir(root):
+        entry_path = os.path.join(root, entry)
+        if os.path.isfile(entry_path) and entry == "info.json":
+            yield entry_path
+            continue
+        if os.path.isdir(entry_path):
+            info_path = os.path.join(entry_path, "info.json")
+            if os.path.isfile(info_path):
+                yield info_path
 
 
-def process_file(path: str, mode: str, write: bool, force: bool) -> bool:
+def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool) -> bool:
     with open(path, "r", encoding="utf-8") as f:
         info = json.load(f)
 
@@ -121,6 +127,7 @@ def process_file(path: str, mode: str, write: bool, force: bool) -> bool:
     name = info.get("name", "")
     deps: List[str] = list(info.get("dependencies") or [])
 
+    print(f"{path}: processing {len(deps)} dependencies (factorio_version={factorio_version or 'none'})")
     changed = False
     new_deps: List[str] = []
     for dep in deps:
@@ -128,26 +135,44 @@ def process_file(path: str, mode: str, write: bool, force: bool) -> bool:
             flag, dep_name, op, ver = parse_dep(dep)
         except ValueError:
             # Keep as-is
+            print(f"{path}: skip unparsable dependency: {dep!r}")
             new_deps.append(dep)
             continue
 
         # Skip base and local packs, and self-references
         if dep_name in {"base"} | MOD_PACK_NAMES | {name}:
+            print(f"{path}: skip local/base/self: {dep_name}")
             new_deps.append(dep)
             continue
 
-        # Respect existing comparator unless forcing
-        if op and not force:
+        # Respect existing comparator unless forcing or upgrading
+        if op and not (force or upgrade):
+            print(f"{path}: skip already pinned: {dep_name} {op} {ver}")
+            new_deps.append(dep)
+            continue
+        if op and upgrade and op not in {">=", "==", "="}:
+            print(f"{path}: skip upgrade unsupported comparator: {dep_name} {op} {ver}")
             new_deps.append(dep)
             continue
 
         latest = fetch_latest_version(dep_name, factorio_version)
         if not latest:
+            print(f"{path}: skip no compatible releases: {dep_name}")
             new_deps.append(dep)
             continue
 
-        new_op = "==" if mode == "eq" else ">="
-        updated = build_dep(flag, dep_name, new_op, latest)
+        print(f"{path}: {dep_name} current={ver or 'none'} latest={latest}")
+        # Upgrade note: for >= pins, default to latest major.minor; if already pinned to a patch, keep patch upgrades.
+        latest_parts = latest.split(".")
+        gte_version = ".".join(latest_parts[:2]) if len(latest_parts) >= 2 else latest
+        if upgrade and op in {">=", "="} and ver and len(ver.split(".")) >= 3:
+            gte_version = latest
+        if op and not force:
+            new_op = op
+        else:
+            new_op = "==" if mode == "eq" else ">="
+        new_ver = gte_version if new_op == ">=" else latest
+        updated = build_dep(flag, dep_name, new_op, new_ver)
         if updated != dep:
             changed = True
             print(f"{path}: {dep}  ->  {updated}")
@@ -167,12 +192,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--write", action="store_true", help="write changes in-place (default: dry run)")
     ap.add_argument("--mode", choices=["gte", "eq"], default="gte", help="pin mode: 'gte' => >= latest (default), 'eq' => == exact latest")
     ap.add_argument("--force", action="store_true", help="override existing comparators if present")
+    ap.add_argument("--upgrade", action="store_true", help="update already pinned dependencies to latest")
     args = ap.parse_args(argv)
 
     any_changed = False
-    for p in iter_infojson_paths(args.path):
+    paths = list(iter_infojson_paths(args.path))
+    print(f"Scanning {len(paths)} info.json file(s) under {args.path!r}")
+    for p in paths:
         try:
-            changed = process_file(p, mode=args.mode, write=args.write, force=args.force)
+            changed = process_file(
+                p,
+                mode=args.mode,
+                write=args.write,
+                force=args.force,
+                upgrade=args.upgrade,
+            )
             any_changed = any_changed or changed
         except Exception as e:
             print(f"ERROR processing {p}: {e}", file=sys.stderr)
