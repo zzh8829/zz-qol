@@ -73,21 +73,27 @@ Build/Release
   - Example: `FACTORIO_TOKEN=... qol-1-lite/release.sh --upload`
 - Output: `dist/<name>_<version>.zip` with correct inner folder structure.
 
-Logos
+Batch Operations
 
-- Each pack includes a `thumbnail.png` generated via `scripts/generate_logos.py`.
-- Thumbnails are 512x512 with “ZZ QOL”, a tier badge (1–4), and a distinct motif.
-- Regenerate: `python3 scripts/generate_logos.py`
+- Pin versions across all packs (also bumps pack patch on dependency/remote changes): `scripts/run_all.sh pin --upgrade --write`
+- Regenerate thumbnails across all packs: `scripts/run_all.sh logos`
+- Build zips across all packs: `scripts/run_all.sh release`
 
-Pin Versions
+Script Reference
 
-- Script: `scripts/pin_mod_versions.py`
-- Dry run: `scripts/pin_mod_versions.py`
-- Exact pins: `scripts/pin_mod_versions.py --write --mode eq`
-- Single file: `scripts/pin_mod_versions.py --path qol-4-editor/info.json --write`
-- Notes: preserves `!`/`?`, skips local pack IDs and `base`, prefers releases for the pack’s `factorio_version`.
+- `scripts/run_all.sh` — driver that scans one level under the repo root for `*/info.json` and runs a script per pack.
+  - Runs in fixed order: `qol-1-lite`, `qol-2-plus`, `qol-3-max`, `qol-4-editor`.
+- `scripts/pin_mod_versions.py` — pin mod dependencies for a single `info.json` file.
+  - Dry run: `python3 scripts/pin_mod_versions.py --path qol-4-editor/info.json`
+  - Exact pins: `python3 scripts/pin_mod_versions.py --path qol-4-editor/info.json --write --mode eq`
+  - Notes: preserves `!`/`?`, skips local pack IDs and `base`, prefers releases for the pack’s `factorio_version`, bumps patch when deps or remote version change.
+- `scripts/generate_logos.py` — generate one pack thumbnail.
+  - Example: `python3 scripts/generate_logos.py --path qol-4-editor`
+  - Output: `thumbnail.png` (512x512 with “ZZ QOL”, tier badge, and motif).
+- `scripts/release_mod.py` — build (and optionally upload) a single pack release zip.
+  - Example: `python3 scripts/release_mod.py --path qol-4-editor`
+  - Upload: `FACTORIO_TOKEN=... python3 scripts/release_mod.py --path qol-4-editor --upload`
 
 License
 
 - MIT License. See `LICENSE` for full text.
-

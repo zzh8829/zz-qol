@@ -2,10 +2,18 @@
 from __future__ import annotations
 
 from PIL import Image, ImageDraw, ImageFont
+import argparse
 import os
+from pathlib import Path
 
 SIZE = 512
 MARGIN = 28
+PACKS = {
+    "qol-1-lite": ("Lite", "1", ((20, 60, 70), (10, 30, 35))),
+    "qol-2-plus": ("Plus", "2", ((20, 40, 100), (10, 20, 60))),
+    "qol-3-max": ("Max", "3", ((60, 30, 90), (30, 10, 50))),
+    "qol-4-editor": ("Editor", "4", ((120, 90, 20), (70, 40, 10))),
+}
 
 
 def load_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -148,19 +156,31 @@ def make_logo(level: str, number: str, colors: tuple[tuple[int, int, int], tuple
     return out_path
 
 
-def main():
-    packs = [
-        ("qol-1-lite", "Lite", "1", ((20, 60, 70), (10, 30, 35))),
-        ("qol-2-plus", "Plus", "2", ((20, 40, 100), (10, 20, 60))),
-        ("qol-3-max", "Max", "3", ((60, 30, 90), (30, 10, 50))),
-        ("qol-4-editor", "Editor", "4", ((120, 90, 20), (70, 40, 10))),
-    ]
-    for folder, label, num, colors in packs:
-        os.makedirs(folder, exist_ok=True)
-        out_path = os.path.join(folder, "thumbnail.png")
-        make_logo(label, num, colors, out_path)
-        print(f"Generated {out_path}")
+def resolve_pack(path: Path) -> tuple[str, str, tuple[tuple[int, int, int], tuple[int, int, int]]]:
+    folder = path.name
+    if folder not in PACKS:
+        raise SystemExit(f"Unknown pack folder {folder!r}; expected one of: {', '.join(sorted(PACKS))}")
+    label, num, colors = PACKS[folder]
+    return label, num, colors
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Generate a pack thumbnail for one mod folder")
+    ap.add_argument("--path", default=".", help="Path to a mod folder containing info.json")
+    args = ap.parse_args(argv)
+
+    mod_dir = Path(args.path).resolve()
+    info_path = mod_dir / "info.json"
+    if not info_path.exists():
+        raise SystemExit(f"Missing info.json in {mod_dir}")
+
+    label, num, colors = resolve_pack(mod_dir)
+    os.makedirs(mod_dir, exist_ok=True)
+    out_path = mod_dir / "thumbnail.png"
+    make_logo(label, num, colors, str(out_path))
+    print(f"Generated {out_path}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

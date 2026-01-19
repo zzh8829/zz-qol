@@ -3,21 +3,25 @@
 Pin Factorio mod dependency versions in info.json files.
 
 Features
-- Scans one file or all info.json under a directory.
+- Scans a single info.json file.
 - For each dependency, fetches the latest portal release compatible with the pack's factorio_version.
 - Preserves `!` (conflict) and `?` (optional) flags and leaves `base` and local pack names unmodified.
 - Skips dependencies that already have a comparator unless `--force`.
 - Modes: `>=` (default) or exact `==` pinning.
+- When dependencies or remote versions change, bumps this pack's patch version.
 
 Examples
-  Dry run for repo:
-    scripts/pin_mod_versions.py
+  Dry run for a pack:
+    scripts/pin_mod_versions.py --path qol-4-editor/info.json
 
   Write changes in-place, pin exact versions:
     scripts/pin_mod_versions.py --write --mode eq
 
   Only a specific pack file:
-    scripts/pin_mod_versions.py --path zz-qol-editor/info.json --write
+    scripts/pin_mod_versions.py --path qol-4-editor/info.json --write
+
+  Force a patch bump (e.g., local dependency changed):
+    scripts/pin_mod_versions.py --path qol-4-editor/info.json --bump --write
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ import json
 import os
 import re
 import sys
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from urllib.request import urlopen
 
 MOD_PACK_NAMES = {"zz-qol-lite", "zz-qol-plus", "zz-qol-max", "zz-qol-editor"}
@@ -103,32 +107,46 @@ def fetch_latest_version(mod: str, want_factorio: Optional[str]) -> Optional[str
     return best[1] if best else None
 
 
-def iter_infojson_paths(root: str) -> Iterable[str]:
-    if os.path.isfile(root):
-        yield root
-        return
-    # Only scan one level under root for info.json files.
-    for entry in os.listdir(root):
-        entry_path = os.path.join(root, entry)
-        if os.path.isfile(entry_path) and entry == "info.json":
-            yield entry_path
-            continue
-        if os.path.isdir(entry_path):
-            info_path = os.path.join(entry_path, "info.json")
-            if os.path.isfile(info_path):
-                yield info_path
+def parse_version(v: str) -> Tuple[int, int, int]:
+    parts = [int(p) for p in v.split(".")]
+    while len(parts) < 3:
+        parts.append(0)
+    return parts[0], parts[1], parts[2]
 
 
-def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool) -> bool:
+def bump_patch(local_ver: str, remote_ver: Optional[str]) -> str:
+    local_tuple = parse_version(local_ver)
+    remote_tuple = parse_version(remote_ver) if remote_ver else (0, 0, 0)
+    base = max(local_tuple, remote_tuple)
+    return f"{base[0]}.{base[1]}.{base[2] + 1}"
+
+
+def resolve_infojson_path(path: str) -> str:
+    if os.path.isdir(path):
+        candidate = os.path.join(path, "info.json")
+        if os.path.isfile(candidate):
+            return candidate
+        raise SystemExit(f"Missing info.json in {path}")
+    if os.path.isfile(path):
+        if os.path.basename(path) != "info.json":
+            raise SystemExit(f"Expected info.json, got {path}")
+        return path
+    raise SystemExit(f"Path not found: {path}")
+
+
+def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool, bump: bool) -> bool:
     with open(path, "r", encoding="utf-8") as f:
         info = json.load(f)
 
     factorio_version = info.get("factorio_version")
     name = info.get("name", "")
+    current_version = info.get("version", "").strip()
     deps: List[str] = list(info.get("dependencies") or [])
 
     print(f"{path}: processing {len(deps)} dependencies (factorio_version={factorio_version or 'none'})")
     changed = False
+    deps_changed = False
+    deps_latest_mismatch = False
     new_deps: List[str] = []
     for dep in deps:
         try:
@@ -161,6 +179,8 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool) 
             new_deps.append(dep)
             continue
 
+        if ver and latest != ver:
+            deps_latest_mismatch = True
         print(f"{path}: {dep_name} current={ver or 'none'} latest={latest}")
         # Upgrade note: for >= pins, default to latest major.minor; if already pinned to a patch, keep patch upgrades.
         latest_parts = latest.split(".")
@@ -170,13 +190,27 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool) 
         if op and not force:
             new_op = op
         else:
-            new_op = "==" if mode == "eq" else ">="
+        new_op = "==" if mode == "eq" else ">="
         new_ver = gte_version if new_op == ">=" else latest
         updated = build_dep(flag, dep_name, new_op, new_ver)
         if updated != dep:
+            deps_changed = True
             changed = True
             print(f"{path}: {dep}  ->  {updated}")
         new_deps.append(updated)
+
+    remote_latest = fetch_latest_version(name, factorio_version) if name else None
+    if remote_latest:
+        print(f"{path}: {name} local_version={current_version or 'none'} remote_latest={remote_latest}")
+    remote_mismatch = bool(remote_latest and current_version and remote_latest != current_version)
+
+    bump_reason = bump or deps_changed or deps_latest_mismatch or remote_mismatch
+    if bump_reason and current_version:
+        new_version = bump_patch(current_version, remote_latest)
+        if new_version != current_version:
+            changed = True
+            info["version"] = new_version
+            print(f"{path}: version bump {current_version} -> {new_version}")
 
     if changed and write:
         info["dependencies"] = new_deps
@@ -188,28 +222,28 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool) 
 
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Pin latest Factorio mod versions in info.json files")
-    ap.add_argument("--path", default=".", help="info.json file or root directory (default: .)")
+    ap.add_argument("--path", default=".", help="Path to an info.json file (or a folder containing it)")
     ap.add_argument("--write", action="store_true", help="write changes in-place (default: dry run)")
     ap.add_argument("--mode", choices=["gte", "eq"], default="gte", help="pin mode: 'gte' => >= latest (default), 'eq' => == exact latest")
     ap.add_argument("--force", action="store_true", help="override existing comparators if present")
     ap.add_argument("--upgrade", action="store_true", help="update already pinned dependencies to latest")
+    ap.add_argument("--bump", action="store_true", help="force a version patch bump (e.g., local dependency changed)")
     args = ap.parse_args(argv)
 
     any_changed = False
-    paths = list(iter_infojson_paths(args.path))
-    print(f"Scanning {len(paths)} info.json file(s) under {args.path!r}")
-    for p in paths:
-        try:
-            changed = process_file(
-                p,
-                mode=args.mode,
-                write=args.write,
-                force=args.force,
-                upgrade=args.upgrade,
-            )
-            any_changed = any_changed or changed
-        except Exception as e:
-            print(f"ERROR processing {p}: {e}", file=sys.stderr)
+    path = resolve_infojson_path(args.path)
+    try:
+        changed = process_file(
+            path,
+            mode=args.mode,
+            write=args.write,
+            force=args.force,
+            upgrade=args.upgrade,
+            bump=args.bump,
+        )
+        any_changed = any_changed or changed
+    except Exception as e:
+        print(f"ERROR processing {path}: {e}", file=sys.stderr)
 
     if not any_changed:
         print("No changes (already pinned or no compatible releases found).")
