@@ -33,8 +33,15 @@ import re
 import sys
 from typing import Dict, List, Optional, Tuple
 from urllib.request import urlopen
+from pathlib import Path
 
 MOD_PACK_NAMES = {"zz-qol-lite", "zz-qol-plus", "zz-qol-max", "zz-qol-editor"}
+MOD_PACK_DIRS = {
+    "zz-qol-lite": "qol-1-lite",
+    "zz-qol-plus": "qol-2-plus",
+    "zz-qol-max": "qol-3-max",
+    "zz-qol-editor": "qol-4-editor",
+}
 DEP_RE = re.compile(r"^\s*([!?])?\s*([A-Za-z0-9_-]+)(?:\s*(>=|<=|==|=|~>)\s*([0-9][0-9.]*))?\s*$")
 
 
@@ -59,25 +66,25 @@ def build_dep(flag: str, name: str, op: Optional[str], ver: Optional[str]) -> st
     return f"{prefix}{name}"
 
 
-def fetch_latest_version(mod: str, want_factorio: Optional[str]) -> Optional[str]:
+def fetch_latest_release(mod: str, want_factorio: Optional[str]) -> Tuple[Optional[str], Optional[List[str]]]:
     url = f"https://mods.factorio.com/api/mods/{mod}"
     try:
         with urlopen(url, timeout=15) as r:
             data = json.load(r)
     except Exception as e:
         print(f"WARN: failed to fetch {mod}: {e}", file=sys.stderr)
-        return None
+        return None, None
 
     releases = data.get("releases") or []
     if not releases:
-        return None
+        return None, None
 
     def parse_ver(v: str) -> Tuple[int, ...]:
         # supports versions like 2.0.60
         return tuple(int(p) for p in v.split("."))
 
     # Prefer releases matching the desired factorio version if provided
-    candidates = []
+    candidates: List[Tuple[int, Tuple[int, ...], str, Dict]] = []
     for rel in releases:
         rel_info = rel.get("info_json") or {}
         fv = rel_info.get("factorio_version")
@@ -86,25 +93,22 @@ def fetch_latest_version(mod: str, want_factorio: Optional[str]) -> Optional[str
             continue
         if want_factorio and fv and fv != want_factorio:
             # keep as fallback list but lower priority
-            candidates.append((1, parse_ver(version), version))
+            candidates.append((1, parse_ver(version), version, rel_info))
         else:
-            candidates.append((0, parse_ver(version), version))
+            candidates.append((0, parse_ver(version), version, rel_info))
 
     if not candidates:
-        return None
+        return None, None
 
     # Sort by priority (0 preferred), then semantic version descending
     candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
-    # Because reverse=True sorts larger tuples first but also flips priority, re-sort with a key
-    candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
-    # Get best (highest version among preferred)
-    best = None
-    best_pri = None
-    for pri, ver_tuple, ver in sorted(candidates, key=lambda t: (t[0], t[1]), reverse=True):
-        if best is None or pri < best_pri or (pri == best_pri and ver_tuple > best[0]):
-            best = (ver_tuple, ver)
-            best_pri = pri
-    return best[1] if best else None
+    best = candidates[0]
+    return best[2], best[3].get("dependencies")
+
+
+def fetch_latest_version(mod: str, want_factorio: Optional[str]) -> Optional[str]:
+    version, _deps = fetch_latest_release(mod, want_factorio)
+    return version
 
 
 def parse_version(v: str) -> Tuple[int, int, int]:
@@ -119,6 +123,31 @@ def bump_patch(local_ver: str, remote_ver: Optional[str]) -> str:
     remote_tuple = parse_version(remote_ver) if remote_ver else (0, 0, 0)
     base = max(local_tuple, remote_tuple)
     return f"{base[0]}.{base[1]}.{base[2] + 1}"
+
+
+def local_dep_version_changed(dep_name: str, repo_root: Path) -> bool:
+    dep_dir = MOD_PACK_DIRS.get(dep_name)
+    if not dep_dir:
+        return False
+    info_path = repo_root / dep_dir / "info.json"
+    if not info_path.exists():
+        print(f"{info_path}: missing local dependency info.json for {dep_name}")
+        return False
+    try:
+        info = json.loads(info_path.read_text())
+    except Exception as e:
+        print(f"{info_path}: failed to read local dependency info.json for {dep_name}: {e}")
+        return False
+    local_version = str(info.get("version", "")).strip()
+    if not local_version:
+        return False
+    remote_latest = fetch_latest_version(dep_name, info.get("factorio_version"))
+    if not remote_latest:
+        return False
+    if local_version != remote_latest:
+        print(f"{info_path}: local_dep {dep_name} local_version={local_version} remote_latest={remote_latest}")
+        return True
+    return False
 
 
 def resolve_infojson_path(path: str) -> str:
@@ -142,11 +171,13 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool, 
     name = info.get("name", "")
     current_version = info.get("version", "").strip()
     deps: List[str] = list(info.get("dependencies") or [])
+    repo_root = Path(path).resolve().parent.parent
 
     print(f"{path}: processing {len(deps)} dependencies (factorio_version={factorio_version or 'none'})")
     changed = False
     deps_changed = False
     deps_latest_mismatch = False
+    local_dep_mismatch = False
     new_deps: List[str] = []
     for dep in deps:
         try:
@@ -159,6 +190,9 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool, 
 
         # Skip base and local packs, and self-references
         if dep_name in {"base"} | MOD_PACK_NAMES | {name}:
+            if dep_name in MOD_PACK_NAMES:
+                if local_dep_version_changed(dep_name, repo_root):
+                    local_dep_mismatch = True
             print(f"{path}: skip local/base/self: {dep_name}")
             new_deps.append(dep)
             continue
@@ -190,7 +224,7 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool, 
         if op and not force:
             new_op = op
         else:
-        new_op = "==" if mode == "eq" else ">="
+            new_op = "==" if mode == "eq" else ">="
         new_ver = gte_version if new_op == ">=" else latest
         updated = build_dep(flag, dep_name, new_op, new_ver)
         if updated != dep:
@@ -199,12 +233,26 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool, 
             print(f"{path}: {dep}  ->  {updated}")
         new_deps.append(updated)
 
-    remote_latest = fetch_latest_version(name, factorio_version) if name else None
+    remote_latest = None
+    remote_deps = None
+    if name:
+        remote_latest, remote_deps = fetch_latest_release(name, factorio_version)
+        if not remote_latest:
+            remote_latest, remote_deps = fetch_latest_release(name, None)
     if remote_latest:
         print(f"{path}: {name} local_version={current_version or 'none'} remote_latest={remote_latest}")
+    else:
+        print(f"{path}: {name} local_version={current_version or 'none'} remote_latest=none")
     remote_mismatch = bool(remote_latest and current_version and remote_latest != current_version)
+    deps_remote_mismatch = False
+    if remote_deps is not None:
+        local_deps_norm = [d.strip() for d in deps]
+        remote_deps_norm = [str(d).strip() for d in remote_deps]
+        if local_deps_norm != remote_deps_norm:
+            deps_remote_mismatch = True
+            print(f"{path}: {name} local_deps != remote_deps (local={len(local_deps_norm)} remote={len(remote_deps_norm)})")
 
-    bump_reason = bump or deps_changed or deps_latest_mismatch or remote_mismatch
+    bump_reason = bump or deps_changed or deps_latest_mismatch or remote_mismatch or local_dep_mismatch or deps_remote_mismatch
     if bump_reason and current_version:
         new_version = bump_patch(current_version, remote_latest)
         if new_version != current_version:

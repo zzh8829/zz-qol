@@ -1,6 +1,6 @@
 {
   "name": "zz-qol-editor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title": "QoL Editor (God Mode)",
   "author": "zzh8829",
   "description": "Creator/god-mode helpers: Editor Extensions, Waterfill. Cascades all QoL packs.",
@@ -10,4 +10,3 @@
     "Waterfill >= 0.1.1"
   ]
 }
-

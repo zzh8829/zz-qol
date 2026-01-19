@@ -86,7 +86,7 @@ Script Reference
 - `scripts/pin_mod_versions.py` — pin mod dependencies for a single `info.json` file.
   - Dry run: `python3 scripts/pin_mod_versions.py --path qol-4-editor/info.json`
   - Exact pins: `python3 scripts/pin_mod_versions.py --path qol-4-editor/info.json --write --mode eq`
-  - Notes: preserves `!`/`?`, skips local pack IDs and `base`, prefers releases for the pack’s `factorio_version`, bumps patch when deps or remote version change.
+  - Notes: preserves `!`/`?`, skips local pack IDs and `base`, prefers releases for the pack’s `factorio_version`, bumps patch when deps, local pack versions, or remote version change.
 - `scripts/generate_logos.py` — generate one pack thumbnail.
   - Example: `python3 scripts/generate_logos.py --path qol-4-editor`
   - Output: `thumbnail.png` (512x512 with “ZZ QOL”, tier badge, and motif).

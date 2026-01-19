@@ -1,23 +1,23 @@
 {
   "name": "zz-qol-lite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title": "QoL Lite (Display Only)",
   "author": "zzh8829",
   "description": "Display-only quality-of-life pack: Infomatrion, Rate Calculator, Milestones.",
   "factorio_version": "2.0",
   "dependencies": [
     "base >= 2.0.0",
-    "informatron >= 0.4.0",
-    "RateCalculator >= 3.3.8",
-    "Milestones >= 1.4.7",
-    "belt-visualizer >= 2.0.2",
-    "flib >= 0.16.5",
-    "better-victory-screen >= 1.0.0",
-    "show-max-underground-distance >= 0.1.0",
-    "BottleneckLite >= 1.3.4",
-    "StatsGui >= 1.6.1",
-    "factoryplanner >= 2.0.43",
-    "RecipeBook >= 4.0.8",
-    "FactorySearch >= 1.14.0"
+    "informatron >= 0.3.4",
+    "RateCalculator >= 3.2.7",
+    "Milestones >= 1.3.25",
+    "belt-visualizer >= 1.3.7",
+    "flib >= 0.14.2",
+    "better-victory-screen >= 0.3.1",
+    "show-max-underground-distance >= 0.0.9",
+    "BottleneckLite >= 1.2.8",
+    "StatsGui >= 1.5.0",
+    "factoryplanner >= 1.1.79",
+    "RecipeBook >= 3.5.10",
+    "FactorySearch >= 1.11.1"
   ]
 }
