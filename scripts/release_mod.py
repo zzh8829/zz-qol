@@ -8,7 +8,7 @@ Features:
 - Optional upload to Mod Portal via v2 publish API using a single API key
 
 Environment for upload (--upload):
-- FACTORIO_TOKEN: API key with "ModPortal: Publish Mods" permission (from https://factorio.com/profile)
+- FACTORIO_TOKEN: API key with "ModPortal: Upload Mods" permission (from https://factorio.com/profile)
 
 macOS convenience
 - If the above env vars are not set, this script will attempt to read
@@ -149,20 +149,20 @@ def maybe_read_changelog(path: Optional[Path]) -> Optional[str]:
 
 
 def upload_v2(mod_name: str, zip_path: Path, description: Optional[str]) -> None:
-    """Publish via Factorio's v2 publish API using only FACTORIO_TOKEN.
+    """Upload via Factorio's v2 upload API using only FACTORIO_TOKEN.
 
     Flow:
-      1) POST to /api/v2/mods/init_publish with header Authorization: Bearer <token>
+      1) POST to /api/v2/mods/releases/init_upload with header Authorization: Bearer <token>
          Form field: mod=<mod_name>
          -> returns { upload_url }
-      2) POST to <upload_url> with multipart form: file=@zip [, description]
-         -> returns { success: true, url: "/mod/<name>" }
+      2) POST to <upload_url> with multipart form: file=@zip
+         -> returns { success: true }
     """
     token = os.environ.get("FACTORIO_TOKEN")
     if not token:
         raise SystemExit("--upload requires FACTORIO_TOKEN (with ModPortal: Publish Mods permission).")
 
-    init_url = "https://mods.factorio.com/api/v2/mods/init_publish"
+    init_url = "https://mods.factorio.com/api/v2/mods/releases/init_upload"
     headers = {"Authorization": f"Bearer {token}"}
     init_resp = run_curl_form(init_url, {"mod": mod_name}, headers=headers)
     try:
@@ -170,10 +170,10 @@ def upload_v2(mod_name: str, zip_path: Path, description: Optional[str]) -> None
     except Exception as e:
         raise SystemExit(f"Failed to parse init_publish response: {e}\nRaw: {init_resp[:200]}...")
     if "error" in init_json:
-        raise SystemExit(f"init_publish error: {init_json.get('error')}: {init_json.get('message')}")
+        raise SystemExit(f"init_upload error: {init_json.get('error')}: {init_json.get('message')}")
     upload_url = init_json.get("upload_url")
     if not upload_url:
-        raise SystemExit("init_publish did not return upload_url")
+        raise SystemExit("init_upload did not return upload_url")
 
     fields: Dict[str, str] = {}
     if description:
