@@ -16,6 +16,7 @@ Packs
 - qol-4-editor (mod id: `zz-qol-editor`)
   - Purpose: god/creator tools for map work and megabase grooming.
   - Why: fast terraforming/test setups outside normal progression.
+  - Publish status: not published on Mod Portal; build locally from this repo.
 
 How Cascading Works
 
@@ -55,6 +56,7 @@ Tier Details
 - zz-qol-editor
   - `Waterfill` — place water tiles; quick lakes/canals for testing.
   - Inherits everything from lower tiers.
+  - Kept as a local-only pack for now; not uploaded to Mod Portal.
 
 Install
 
@@ -71,6 +73,7 @@ Build/Release
 - Upload to Mod Portal (v2 publish API):
   - Set `FACTORIO_TOKEN` (API key with “ModPortal: Publish Mods”).
   - Example: `FACTORIO_TOKEN=... qol-1-lite/release.sh --upload`
+  - `zz-qol-editor` is intentionally not published; `--upload` builds its zip and skips the portal step.
 - Output: `dist/<name>_<version>.zip` with correct inner folder structure.
 
 Batch Operations
@@ -78,6 +81,7 @@ Batch Operations
 - Pin versions across all packs (also bumps pack patch on dependency/remote changes): `scripts/run_all.sh pin --upgrade --write`
 - Regenerate thumbnails across all packs: `scripts/run_all.sh logos`
 - Build zips across all packs: `scripts/run_all.sh release`
+  - With `--upload`, published packs upload normally and `qol-4-editor` is skipped.
 
 Script Reference
 
@@ -92,7 +96,8 @@ Script Reference
   - Output: `thumbnail.png` (512x512 with “ZZ QOL”, tier badge, and motif).
 - `scripts/release_mod.py` — build (and optionally upload) a single pack release zip.
   - Example: `python3 scripts/release_mod.py --path qol-4-editor`
-  - Upload: `FACTORIO_TOKEN=... python3 scripts/release_mod.py --path qol-4-editor --upload`
+  - Upload: `FACTORIO_TOKEN=... python3 scripts/release_mod.py --path qol-1-lite --upload`
+  - Note: `qol-4-editor` is marked local-only, so `--upload` will build the zip and skip Mod Portal upload.
 
 License
 

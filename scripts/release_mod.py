@@ -45,6 +45,10 @@ EXCLUDE_NAMES = {
     ".vscode",
 }
 
+UNPUBLISHED_MODS = {
+    "zz-qol-editor",
+}
+
 
 def load_info(mod_dir: Path) -> Dict[str, str]:
     info_path = mod_dir / "info.json"
@@ -208,6 +212,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Upload if requested
     if args.upload:
+        if name in UNPUBLISHED_MODS:
+            print(f"Skipping upload for {name} {version}: this pack is marked as not published on Mod Portal.")
+            return 0
         changelog_text = maybe_read_changelog(Path(args.changelog)) if args.changelog else None
         print(f"Uploading {name} {version} to Mod Portal...")
         upload_v2(name, zip_path, changelog_text)

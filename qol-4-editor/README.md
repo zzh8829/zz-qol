@@ -11,4 +11,4 @@ Includes (with why)
 
 Notes
 - Use on creative/sandbox saves or when acting as a map editor in co‑op runs.
-
+- This pack is currently local-only and is not published on the Factorio Mod Portal.
