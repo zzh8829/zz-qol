@@ -1,14 +1,14 @@
 {
   "name": "zz-qol-max",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "title": "QoL Max (Heavier QoL)",
   "author": "zzh8829",
   "description": "Includes heavier QoL helpers such as Blueprint Shotgun. Depends on QoL Plus and Lite.",
   "factorio_version": "2.0",
   "dependencies": [
     "zz-qol-plus >= 1.0.0",
-    "blueprint-shotgun >= 0.0.13",
-    "squeak-through-2 >= 0.0.4",
-    "inventory-repair >= 19.1.1"
+    "blueprint-shotgun >= 0.2.19",
+    "squeak-through-2 >= 0.1.4",
+    "inventory-repair >= 20.0.3"
   ]
 }

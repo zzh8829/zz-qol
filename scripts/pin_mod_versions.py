@@ -66,6 +66,32 @@ def build_dep(flag: str, name: str, op: Optional[str], ver: Optional[str]) -> st
     return f"{prefix}{name}"
 
 
+def select_latest_release(
+    releases: List[Dict],
+    want_factorio: Optional[str],
+) -> Tuple[Optional[str], Optional[List[str]]]:
+    def parse_ver(v: str) -> Tuple[int, ...]:
+        # supports versions like 2.0.60
+        return tuple(int(p) for p in v.split("."))
+
+    candidates: List[Tuple[int, Tuple[int, ...], str, Dict]] = []
+    for rel in releases:
+        rel_info = rel.get("info_json") or {}
+        fv = rel_info.get("factorio_version")
+        version = rel.get("version")
+        if not version:
+            continue
+        priority = 0 if not want_factorio or not fv or fv == want_factorio else 1
+        candidates.append((priority, parse_ver(version), version, rel_info))
+
+    if not candidates:
+        return None, None
+
+    # Prefer factorio_version-compatible releases, then take the highest semver.
+    best = max(candidates, key=lambda t: (-t[0], t[1]))
+    return best[2], best[3].get("dependencies")
+
+
 def fetch_latest_release(mod: str, want_factorio: Optional[str]) -> Tuple[Optional[str], Optional[List[str]]]:
     url = f"https://mods.factorio.com/api/mods/{mod}"
     try:
@@ -79,31 +105,7 @@ def fetch_latest_release(mod: str, want_factorio: Optional[str]) -> Tuple[Option
     if not releases:
         return None, None
 
-    def parse_ver(v: str) -> Tuple[int, ...]:
-        # supports versions like 2.0.60
-        return tuple(int(p) for p in v.split("."))
-
-    # Prefer releases matching the desired factorio version if provided
-    candidates: List[Tuple[int, Tuple[int, ...], str, Dict]] = []
-    for rel in releases:
-        rel_info = rel.get("info_json") or {}
-        fv = rel_info.get("factorio_version")
-        version = rel.get("version")
-        if not version:
-            continue
-        if want_factorio and fv and fv != want_factorio:
-            # keep as fallback list but lower priority
-            candidates.append((1, parse_ver(version), version, rel_info))
-        else:
-            candidates.append((0, parse_ver(version), version, rel_info))
-
-    if not candidates:
-        return None, None
-
-    # Sort by priority (0 preferred), then semantic version descending
-    candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
-    best = candidates[0]
-    return best[2], best[3].get("dependencies")
+    return select_latest_release(releases, want_factorio)
 
 
 def fetch_latest_version(mod: str, want_factorio: Optional[str]) -> Optional[str]:
