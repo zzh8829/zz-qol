@@ -2,6 +2,13 @@ zz-qol: Cascading Factorio QoL Modpacks
 
 Lightweight, dependency-only modpacks that cascade from least to most game‑changing. Enable a higher tier to get everything below.
 
+Compatibility
+
+- Lite, Plus, and Max 1.1.0 require Factorio 2.1.22 or newer.
+- RecipeBook is replaced by [RecipeBook2_1](https://mods.factorio.com/mod/RecipeBook2_1) 1.0.0.
+- The unpublished Editor pack remains at 1.0.2 for Factorio 2.0: Waterfill has no 2.1 release. Use the older 1.0.2 Lite/Plus/Max packs with it.
+- Dependency metadata was checked against the Mod Portal on 2026-10-26. Full in-game validation was not performed; the available local game is 2.1.21.
+
 Packs
 
 - qol-1-lite (mod id: `zz-qol-lite`)
@@ -37,7 +44,7 @@ Tier Details
   - `BottleneckLite` — lamp‑style activity indicators; see “stuck” machines.
   - `StatsGui` — surface/factory stats; plan expansions sensibly.
   - `factoryplanner` — production planner; blueprint inputs/outputs clearly.
-  - `RecipeBook` — browse recipes/uses; learn chains quickly.
+  - `RecipeBook2_1` — browse recipes/uses; learn chains quickly.
   - `FactorySearch` — fast search for items/recipes/entities.
 
 - zz-qol-plus
@@ -71,7 +78,7 @@ Build/Release
   - `qol-3-max/release.sh`
   - `qol-4-editor/release.sh`
 - Upload to Mod Portal (v2 publish API):
-  - Set `FACTORIO_TOKEN` (API key with “ModPortal: Publish Mods”).
+  - Set `FACTORIO_TOKEN` (API key with “ModPortal: Upload Mods”).
   - Example: `FACTORIO_TOKEN=... qol-1-lite/release.sh --upload`
   - `zz-qol-editor` is intentionally not published; `--upload` builds its zip and skips the portal step.
 - Output: `dist/<name>_<version>.zip` with correct inner folder structure.
@@ -90,7 +97,7 @@ Script Reference
 - `scripts/pin_mod_versions.py` — pin mod dependencies for a single `info.json` file.
   - Dry run: `python3 scripts/pin_mod_versions.py --path qol-4-editor/info.json`
   - Exact pins: `python3 scripts/pin_mod_versions.py --path qol-4-editor/info.json --write --mode eq`
-  - Notes: preserves `!`/`?`, skips local pack IDs and `base`, prefers releases for the pack’s `factorio_version`, bumps patch when deps, local pack versions, or remote version change.
+  - Notes: preserves `!`/`?`, skips local pack IDs and `base`, requires releases matching the pack’s `factorio_version` and fails if none can be verified, bumps patch when deps, local pack versions, or remote version change.
 - `scripts/generate_logos.py` — generate one pack thumbnail.
   - Example: `python3 scripts/generate_logos.py --path qol-4-editor`
   - Output: `thumbnail.png` (512x512 with “ZZ QOL”, tier badge, and motif).

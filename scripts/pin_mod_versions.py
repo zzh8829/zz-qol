@@ -7,7 +7,7 @@ Features
 - For each dependency, fetches the latest portal release compatible with the pack's factorio_version.
 - Preserves `!` (conflict) and `?` (optional) flags and leaves `base` and local pack names unmodified.
 - Skips dependencies that already have a comparator unless `--force`.
-- Modes: `>=` (default) or exact `==` pinning.
+- Modes: `>=` (default) or exact `=` pinning.
 - When dependencies or remote versions change, bumps this pack's patch version.
 
 Examples
@@ -42,7 +42,7 @@ MOD_PACK_DIRS = {
     "zz-qol-max": "qol-3-max",
     "zz-qol-editor": "qol-4-editor",
 }
-DEP_RE = re.compile(r"^\s*([!?])?\s*([A-Za-z0-9_-]+)(?:\s*(>=|<=|==|=|~>)\s*([0-9][0-9.]*))?\s*$")
+DEP_RE = re.compile(r"^\s*(\(\?\)|[!?+~])?\s*([A-Za-z0-9_-]+)(?:\s*(>=|<=|==|=|>|<)\s*([0-9][0-9.]*))?\s*$")
 
 
 def parse_dep(dep: str) -> Tuple[str, str, Optional[str], Optional[str]]:
@@ -81,13 +81,15 @@ def select_latest_release(
         version = rel.get("version")
         if not version:
             continue
-        priority = 0 if not want_factorio or not fv or fv == want_factorio else 1
+        if want_factorio and fv != want_factorio:
+            continue
+        priority = 0
         candidates.append((priority, parse_ver(version), version, rel_info))
 
     if not candidates:
         return None, None
 
-    # Prefer factorio_version-compatible releases, then take the highest semver.
+    # Only matching Factorio releases are eligible; never fall back to another major.
     best = max(candidates, key=lambda t: (-t[0], t[1]))
     return best[2], best[3].get("dependencies")
 
@@ -199,6 +201,10 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool, 
             new_deps.append(dep)
             continue
 
+        if flag == "!":
+            new_deps.append(dep)
+            continue
+
         # Respect existing comparator unless forcing or upgrading
         if op and not (force or upgrade):
             print(f"{path}: skip already pinned: {dep_name} {op} {ver}")
@@ -211,23 +217,17 @@ def process_file(path: str, mode: str, write: bool, force: bool, upgrade: bool, 
 
         latest = fetch_latest_version(dep_name, factorio_version)
         if not latest:
-            print(f"{path}: skip no compatible releases: {dep_name}")
-            new_deps.append(dep)
-            continue
+            raise ValueError(f"No verified Factorio {factorio_version} release for {dep_name}; refusing to update {path}")
 
         if ver and latest != ver:
             deps_latest_mismatch = True
         print(f"{path}: {dep_name} current={ver or 'none'} latest={latest}")
-        # Upgrade note: for >= pins, default to latest major.minor; if already pinned to a patch, keep patch upgrades.
-        latest_parts = latest.split(".")
-        gte_version = ".".join(latest_parts[:2]) if len(latest_parts) >= 2 else latest
-        if upgrade and op in {">=", "="} and ver and len(ver.split(".")) >= 3:
-            gte_version = latest
         if op and not force:
-            new_op = op
+            new_op = "=" if op == "==" else op
         else:
-            new_op = "==" if mode == "eq" else ">="
-        new_ver = gte_version if new_op == ">=" else latest
+            new_op = "=" if mode == "eq" else ">="
+        # Preserve the full patch: earlier patches may target a different Factorio major.
+        new_ver = latest
         updated = build_dep(flag, dep_name, new_op, new_ver)
         if updated != dep:
             deps_changed = True
@@ -274,7 +274,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Pin latest Factorio mod versions in info.json files")
     ap.add_argument("--path", default=".", help="Path to an info.json file (or a folder containing it)")
     ap.add_argument("--write", action="store_true", help="write changes in-place (default: dry run)")
-    ap.add_argument("--mode", choices=["gte", "eq"], default="gte", help="pin mode: 'gte' => >= latest (default), 'eq' => == exact latest")
+    ap.add_argument("--mode", choices=["gte", "eq"], default="gte", help="pin mode: 'gte' => >= latest (default), 'eq' => = exact latest")
     ap.add_argument("--force", action="store_true", help="override existing comparators if present")
     ap.add_argument("--upgrade", action="store_true", help="update already pinned dependencies to latest")
     ap.add_argument("--bump", action="store_true", help="force a version patch bump (e.g., local dependency changed)")
@@ -294,6 +294,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         any_changed = any_changed or changed
     except Exception as e:
         print(f"ERROR processing {path}: {e}", file=sys.stderr)
+        return 1
 
     if not any_changed:
         print("No changes (already pinned or no compatible releases found).")

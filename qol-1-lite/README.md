@@ -1,22 +1,24 @@
 ZZ QOL — Lite (Display Only)
 
+Requires Factorio 2.1.22 or newer.
+
 Goal
 - Pure visibility and planning. No gameplay changes.
 
 Includes (with why)
-- base >= 2.0.0 — game base; listed by convention.
-- informatron >= 0.4.0 — central in‑game docs hub; keeps mod info in one place.
-- RateCalculator >= 3.3.8 — live production/consumption rates to spot bottlenecks quickly.
-- Milestones >= 1.4.7 — progress markers to track run goals without affecting balance.
-- belt-visualizer >= 2.0.2 — visualize belt lane contents and flow for debugging.
-- flib >= 0.16.5 — common GUI/utilities used by several QoL mods.
-- better-victory-screen >= 1.0.0 — cleaner summary on victory; cosmetic only.
-- show-max-underground-distance >= 0.1.0 — shows max underground span so you place correctly first try.
-- BottleneckLite >= 1.3.4 — lamp‑style status lights to reveal idle or starved machines.
-- StatsGui >= 1.6.1 — global/surface statistics for smarter planning.
-- factoryplanner >= 2.0.48 — production planner to size builds before placing anything.
-- RecipeBook >= 4.0.8 — searchable encyclopedia of recipes and uses.
-- FactorySearch >= 1.14.0 — fast search for items/recipes/entities in the world.
+- base >= 2.1.22 — game base; listed by convention.
+- informatron >= 0.5.0 — central in‑game docs hub; keeps mod info in one place.
+- RateCalculator >= 3.4.2 — live production/consumption rates to spot bottlenecks quickly.
+- Milestones >= 1.5.2 — progress markers to track run goals without affecting balance.
+- belt-visualizer >= 2.1.4 — visualize belt lane contents and flow for debugging.
+- flib >= 0.17.2 — common GUI/utilities used by several QoL mods.
+- better-victory-screen >= 2.1.1 — cleaner summary on victory; cosmetic only.
+- show-max-underground-distance >= 0.1.1 — shows max underground span so you place correctly first try.
+- BottleneckLite >= 1.4.1 — lamp‑style status lights to reveal idle or starved machines.
+- StatsGui >= 1.7.0 — global/surface statistics for smarter planning.
+- factoryplanner >= 2.1.21 — production planner to size builds before placing anything.
+- RecipeBook2_1 >= 1.0.0 — searchable encyclopedia of recipes and uses.
+- FactorySearch >= 1.15.0 — fast search for items/recipes/entities in the world.
 
 Next tiers
 - For light automation, add: qol-2-plus (mod id: zz-qol-plus)

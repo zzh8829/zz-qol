@@ -1,0 +1,7 @@
+---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2026-10-26
+  Changes:
+    - Support Factorio 2.1.22 and newer.
+    - Update minimum dependency versions to verified Factorio 2.1 releases.
+    - Replace RecipeBook with the Factorio 2.1 fork RecipeBook2_1 1.0.0.

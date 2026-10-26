@@ -1,17 +1,18 @@
 {
   "name": "zz-qol-plus",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "title": "QoL Plus (Light Automation)",
   "author": "zzh8829",
   "description": "Automates click-heavy tasks a player can do manually. Includes Auto Deconstruct and Even Distribution.",
-  "factorio_version": "2.0",
+  "factorio_version": "2.1",
   "dependencies": [
-    "zz-qol-lite >= 1.0.0",
-    "AutoDeconstruct >= 1.0.12",
-    "EvenDistributionLite >= 1.4.5",
-    "EditorExtensions >= 2.5.2",
-    "pump >= 2.1.20",
-    "mining-patch-planner >= 1.7.18",
-    "manual-inventory-sort >= 2.3.0"
+    "base >= 2.1.22",
+    "zz-qol-lite >= 1.1.0",
+    "AutoDeconstruct >= 1.1.2",
+    "EvenDistributionLite >= 1.5.0",
+    "EditorExtensions >= 2.6.1",
+    "pump >= 2.2.4",
+    "mining-patch-planner >= 1.7.22",
+    "manual-inventory-sort >= 21.3.0"
   ]
 }

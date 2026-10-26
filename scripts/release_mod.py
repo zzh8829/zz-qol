@@ -10,12 +10,6 @@ Features:
 Environment for upload (--upload):
 - FACTORIO_TOKEN: API key with "ModPortal: Upload Mods" permission (from https://factorio.com/profile)
 
-macOS convenience
-- If the above env vars are not set, this script will attempt to read
-  "service-username" and "service-token" from your local
-  player-data.json (e.g.,
-  ~/Library/Application Support/factorio/player-data.json).
-
 Usage:
   scripts/release_mod.py --path qol-1-lite [--upload] [--changelog CHANGELOG.md]
 
@@ -27,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -117,7 +110,7 @@ def run_curl_json(url: str, payload: Dict[str, str], headers: Optional[Dict[str,
         out = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         sys.stderr.write(e.output.decode(errors="ignore"))
-        raise SystemExit(f"curl JSON request failed: {' '.join(shlex.quote(c) for c in cmd)}\nExit {e.returncode}")
+        raise SystemExit(f"curl JSON request failed (exit {e.returncode}); request credentials omitted.")
     try:
         return json.loads(out.decode())
     except Exception as e:
@@ -139,7 +132,7 @@ def run_curl_form(url: str, fields: Dict[str, str], files: Optional[Dict[str, Pa
         out = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         sys.stderr.write(e.output.decode(errors="ignore"))
-        raise SystemExit(f"curl form request failed: {' '.join(shlex.quote(c) for c in cmd)}\nExit {e.returncode}")
+        raise SystemExit(f"curl form request failed (exit {e.returncode}); request credentials omitted.")
     return out.decode()
 
 
@@ -164,7 +157,7 @@ def upload_v2(mod_name: str, zip_path: Path, description: Optional[str]) -> None
     """
     token = os.environ.get("FACTORIO_TOKEN")
     if not token:
-        raise SystemExit("--upload requires FACTORIO_TOKEN (with ModPortal: Publish Mods permission).")
+        raise SystemExit("--upload requires FACTORIO_TOKEN (with ModPortal: Upload Mods permission).")
 
     init_url = "https://mods.factorio.com/api/v2/mods/releases/init_upload"
     headers = {"Authorization": f"Bearer {token}"}
