@@ -38,10 +38,6 @@ EXCLUDE_NAMES = {
     ".vscode",
 }
 
-UNPUBLISHED_MODS = {
-    "zz-qol-editor",
-}
-
 
 def load_info(mod_dir: Path) -> Dict[str, str]:
     info_path = mod_dir / "info.json"
@@ -145,7 +141,7 @@ def maybe_read_changelog(path: Optional[Path]) -> Optional[str]:
     return text or None
 
 
-def upload_v2(mod_name: str, zip_path: Path, description: Optional[str]) -> None:
+def upload_v2(mod_name: str, zip_path: Path, description: Optional[str], publish: bool = False) -> None:
     """Upload via Factorio's v2 upload API using only FACTORIO_TOKEN.
 
     Flow:
@@ -160,6 +156,8 @@ def upload_v2(mod_name: str, zip_path: Path, description: Optional[str]) -> None
         raise SystemExit("--upload requires FACTORIO_TOKEN (with ModPortal: Upload Mods permission).")
 
     init_url = "https://mods.factorio.com/api/v2/mods/releases/init_upload"
+    if publish:
+        init_url = "https://mods.factorio.com/api/v2/mods/init_publish"
     headers = {"Authorization": f"Bearer {token}"}
     init_resp = run_curl_form(init_url, {"mod": mod_name}, headers=headers)
     try:
@@ -175,6 +173,8 @@ def upload_v2(mod_name: str, zip_path: Path, description: Optional[str]) -> None
     fields: Dict[str, str] = {}
     if description:
         fields["description"] = description
+    if publish:
+        fields.update(category="mod-packs", license="mit", source_url="https://github.com/zzh8829/zz-qol")
     upload_resp = run_curl_form(upload_url, fields, files={"file": zip_path})
     try:
         uploaded = json.loads(upload_resp)
@@ -189,6 +189,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--path", default=".", help="Path to the mod directory containing info.json")
     ap.add_argument("--out-dir", default="dist", help="Output directory for built zips")
     ap.add_argument("--upload", action="store_true", help="Upload to Factorio Mod Portal (v2 publish API)")
+    ap.add_argument("--publish", action="store_true", help="Publish a new mod (requires ModPortal: Publish Mods)")
     ap.add_argument("--changelog", default=None, help="Path to changelog file to include in release")
     args = ap.parse_args(argv)
 
@@ -204,13 +205,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"Built: {zip_path}")
 
     # Upload if requested
-    if args.upload:
-        if name in UNPUBLISHED_MODS:
-            print(f"Skipping upload for {name} {version}: this pack is marked as not published on Mod Portal.")
-            return 0
+    if args.upload or args.publish:
         changelog_text = maybe_read_changelog(Path(args.changelog)) if args.changelog else None
         print(f"Uploading {name} {version} to Mod Portal...")
-        upload_v2(name, zip_path, changelog_text)
+        if args.publish and not changelog_text:
+            changelog_text = maybe_read_changelog(mod_dir / "README.md")
+        upload_v2(name, zip_path, changelog_text, publish=args.publish)
         print("Upload completed.")
     else:
         print("Dry run (no upload). To upload, pass --upload and set FACTORIO_TOKEN.")

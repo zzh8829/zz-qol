@@ -4,15 +4,13 @@ Goal
 - God/creator tools for map work, testing, and megabase grooming outside normal progression.
 
 Cascades
-- Depends on: zz-qol-max >= 1.0.0 (inherits all Max, Plus, and Lite tools)
+- Depends on: zz-qol-max >= 1.1.0 (inherits all Max, Plus, and Lite tools)
 
 Includes (with why)
-- Waterfill >= 0.1.1 — place water tiles to create lakes/canals for testing and world shaping.
+- Waterfill_v17 >= 2.1.2 — place water tiles to create lakes/canals for testing and world shaping.
 
 Notes
 - Use on creative/sandbox saves or when acting as a map editor in co‑op runs.
-- This pack is currently local-only and is not published on the Factorio Mod Portal.
-
-Compatibility
-- This legacy pack remains on Factorio 2.0 because Waterfill has no 2.1 release.
-- Use Lite, Plus, and Max version 1.0.2 with this pack, not their 2.1-only 1.1.0 releases.
+- Requires Factorio 2.1.22 or newer and the 1.1.0 lower tiers.
+- Uses untraceablesmurf's Waterfill (Waterfill_v17), which conflicts with factorioplus.
+- With Space Age, water placement is restricted to Nauvis and Gleba by default.

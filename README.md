@@ -4,9 +4,9 @@ Lightweight, dependency-only modpacks that cascade from least to most game‑cha
 
 Compatibility
 
-- Lite, Plus, and Max 1.1.0 require Factorio 2.1.22 or newer.
+- All four packs at 1.1.0 require Factorio 2.1.22 or newer.
 - RecipeBook is replaced by [RecipeBook2_1](https://mods.factorio.com/mod/RecipeBook2_1) 1.0.0.
-- The unpublished Editor pack remains at 1.0.2 for Factorio 2.0: Waterfill has no 2.1 release. Use the older 1.0.2 Lite/Plus/Max packs with it.
+- Editor uses untraceablesmurf’s `Waterfill_v17 >= 2.1.2` (incompatible with `factorioplus`).
 - Dependency metadata was checked against the Mod Portal on 2026-10-26. Full in-game validation was not performed; the available local game is 2.1.21.
 
 Packs
@@ -23,7 +23,7 @@ Packs
 - qol-4-editor (mod id: `zz-qol-editor`)
   - Purpose: god/creator tools for map work and megabase grooming.
   - Why: fast terraforming/test setups outside normal progression.
-  - Publish status: not published on Mod Portal; build locally from this repo.
+  - Supports Factorio 2.1 with the same cascade as the other packs.
 
 How Cascading Works
 
@@ -61,9 +61,8 @@ Tier Details
   - `inventory-repair` — auto‑repair from inventory when applicable.
 
 - zz-qol-editor
-  - `Waterfill` — place water tiles; quick lakes/canals for testing.
+  - `Waterfill_v17` — place water tiles; quick lakes/canals for testing.
   - Inherits everything from lower tiers.
-  - Kept as a local-only pack for now; not uploaded to Mod Portal.
 
 Install
 
@@ -80,7 +79,6 @@ Build/Release
 - Upload to Mod Portal (v2 publish API):
   - Set `FACTORIO_TOKEN` (API key with “ModPortal: Upload Mods”).
   - Example: `FACTORIO_TOKEN=... qol-1-lite/release.sh --upload`
-  - `zz-qol-editor` is intentionally not published; `--upload` builds its zip and skips the portal step.
 - Output: `dist/<name>_<version>.zip` with correct inner folder structure.
 
 Batch Operations
@@ -88,7 +86,6 @@ Batch Operations
 - Pin versions across all packs (also bumps pack patch on dependency/remote changes): `scripts/run_all.sh pin --upgrade --write`
 - Regenerate thumbnails across all packs: `scripts/run_all.sh logos`
 - Build zips across all packs: `scripts/run_all.sh release`
-  - With `--upload`, published packs upload normally and `qol-4-editor` is skipped.
 
 Script Reference
 
@@ -104,8 +101,9 @@ Script Reference
 - `scripts/release_mod.py` — build (and optionally upload) a single pack release zip.
   - Example: `python3 scripts/release_mod.py --path qol-4-editor`
   - Upload: `FACTORIO_TOKEN=... python3 scripts/release_mod.py --path qol-1-lite --upload`
-  - Note: `qol-4-editor` is marked local-only, so `--upload` will build the zip and skip Mod Portal upload.
 
 License
 
 - MIT License. See `LICENSE` for full text.
+
+First-time publication of Editor: `python3 scripts/release_mod.py --path qol-4-editor --publish` (requires ModPortal: Publish Mods). Subsequent releases use `--upload`.

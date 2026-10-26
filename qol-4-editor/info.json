@@ -1,12 +1,13 @@
 {
   "name": "zz-qol-editor",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "title": "QoL Editor (God Mode)",
   "author": "zzh8829",
   "description": "Creator/god-mode helpers: Editor Extensions, Waterfill. Cascades all QoL packs.",
-  "factorio_version": "2.0",
+  "factorio_version": "2.1",
   "dependencies": [
-    "zz-qol-max >= 1.0.0",
-    "Waterfill >= 0.1.1"
+    "base >= 2.1.22",
+    "zz-qol-max >= 1.1.0",
+    "Waterfill_v17 >= 2.1.2"
   ]
 }

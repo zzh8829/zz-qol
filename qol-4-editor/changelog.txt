@@ -1,0 +1,7 @@
+---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2026-10-26
+  Changes:
+    - Support Factorio 2.1.22 and newer and require QoL Max 1.1.0.
+    - Replace Waterfill with untraceablesmurf's Waterfill_v17 >= 2.1.2.
+    - Prepare the Editor pack for its first Mod Portal publication.
